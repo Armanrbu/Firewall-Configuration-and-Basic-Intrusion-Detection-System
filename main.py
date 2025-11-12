@@ -1,6 +1,6 @@
 """
 Firewall Control & Alert System.
-Run as Administrator on Windows.
+Run as Administrator on Window
 """
 
 import sys
