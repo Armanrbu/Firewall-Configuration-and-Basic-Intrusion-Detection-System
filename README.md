@@ -22,3 +22,4 @@ This project demonstrates how a firewall can protect a system from network scann
 - **Tested On:** Windows 10 / 11  
 - **Security Test Tool:** Kali Linux (`nmap` for port scanning)
 
+If you enjoy this project, please consider giving it a ⭐ Star on GitHub! 🌟
