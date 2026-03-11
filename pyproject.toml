@@ -5,15 +5,21 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "netguard-ids"
 version = "2.0.0"
-description = "Advanced Firewall & Intrusion Detection System with ML anomaly detection"
+description = "NetGuard IDS — Production-ready Firewall & Intrusion Detection System with ML anomaly detection, Deep Packet Inspection, REST API, CLI, and PySide6 GUI"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Arman", email = "arman@example.com" }]
 requires-python = ">=3.10"
-keywords = ["firewall", "ids", "intrusion-detection", "security", "networking"]
+keywords = [
+    "firewall", "ids", "intrusion-detection", "network-security",
+    "anomaly-detection", "deep-packet-inspection", "cybersecurity",
+    "iptables", "netsh", "pyside6", "fastapi", "machine-learning",
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -21,6 +27,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: System :: Networking :: Firewalls",
     "Topic :: Security",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Networking :: Monitoring",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Console",
+    "Environment :: No Input/Output (Daemon)",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
 ]
