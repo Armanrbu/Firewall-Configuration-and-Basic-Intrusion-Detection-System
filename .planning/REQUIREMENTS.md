@@ -1,102 +1,132 @@
-# Requirements: NetGuard IDS
+# Requirements — NetGuard IDS v2
 
-**Defined:** 2026-03-11
-**Core Value:** Administrators can detect and block malicious network activity in real time from a single, self-contained desktop application — no cloud dependency, no complex setup.
+## Legend
+- **v1** — Must ship in v2.0 release (core product)
+- **v2** — Post-launch iteration (v2.x releases)
+- **oos** — Out of scope (not planned)
 
-## v1 Requirements
+---
 
-### Foundation
+## FOUNDATION — Security & Stability
 
-- [x] **FOUND-01**: Project installs cleanly via `pip install -r requirements.txt`
-- [x] **FOUND-02**: Configuration loaded from `config.yaml` via `utils/config_loader.py`
-- [x] **FOUND-03**: Structured logging with rotating file handler (`utils/logger.py`)
-- [x] **FOUND-04**: SQLite database auto-created on first run (`firewall_ids.db`)
-- [x] **FOUND-05**: `.env` support for credentials (python-dotenv, optional)
-- [x] **FOUND-06**: IP and port validation before any shell command (`utils/validators.py`)
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| FND-001 | Replace all `os.system()` / f-string subprocess calls with `subprocess.run([list])` to prevent command injection | v1 | PITFALLS S2, CONCERNS.md |
+| FND-002 | Validate all IP addresses with `ipaddress` module before any firewall or network operation | v1 | PITFALLS S2, CONCERNS.md |
+| FND-003 | Implement graceful shutdown for all background threads (IDS, scheduler, API) | v1 | CONCERNS.md |
+| FND-004 | Add thread-safe database access (connection pooling or per-thread connections) | v1 | CONCERNS.md |
+| FND-005 | Implement database migration system (Alembic or manual versioned migrations) | v1 | CONCERNS.md |
+| FND-006 | Add connection log retention/pruning (configurable max age/count) | v1 | CONCERNS.md |
+| FND-007 | Move API key storage from plaintext config to `.env` file with python-dotenv | v1 | CONCERNS.md |
+| FND-008 | Add structured JSON logging alongside human-readable logs | v1 | FEATURES |
+| FND-009 | Implement proper error boundaries — no unhandled exceptions crash the app | v1 | CONCERNS.md |
+| FND-010 | IPv6 support in firewall commands and IP validation | v1 | PITFALLS A1 |
 
-### Firewall
+## ARCHITECTURE — Microkernel & Decoupling
 
-- [x] **FW-01**: Block an IP address on Windows using `netsh advfirewall`
-- [x] **FW-02**: Block an IP address on Linux using `iptables`
-- [x] **FW-03**: Block a port (TCP/UDP) on Windows and Linux
-- [x] **FW-04**: Unblock an IP address (remove firewall rule)
-- [x] **FW-05**: List all NetGuard-managed firewall rules
-- [x] **FW-06**: All firewall operations wrapped in try/except; return `{success, message}`
-- [x] **FW-07**: Persistent blocklist stored in SQLite (`core/blocklist.py`)
-- [x] **FW-08**: Whitelist for trusted IPs that are never blocked (`core/whitelist.py`)
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| ARC-001 | Separate detection engine into standalone service (runs without GUI) | v1 | PROJECT.md, ARCHITECTURE |
+| ARC-002 | Define IPC protocol between engine and frontends (Redis Streams or multiprocessing.Queue) | v1 | ARCHITECTURE |
+| ARC-003 | Implement event-driven architecture with message queues between layers | v1 | ARCHITECTURE |
+| ARC-004 | Create abstract `FirewallCommand` interface with platform-specific implementations | v1 | ARCHITECTURE |
+| ARC-005 | Implement database repository pattern with SQLAlchemy ORM | v1 | ARCHITECTURE |
+| ARC-006 | Support configurable database backend (SQLite default, optional PostgreSQL) | v1 | STACK |
+| ARC-007 | Headless mode — engine runs as system service without any GUI dependency | v1 | PROJECT.md |
+| ARC-008 | Configuration hot-reload without service restart | v2 | FEATURES |
 
-### Intrusion Detection
+## DETECTION — Rule Engine & ML
 
-- [x] **IDS-01**: Real-time connection monitoring via psutil
-- [x] **IDS-02**: Parse Windows firewall log for dropped packets
-- [x] **IDS-03**: ML anomaly detection using Isolation Forest (`core/anomaly.py`)
-- [x] **IDS-04**: Fallback threshold-based detection when scikit-learn is absent
-- [x] **IDS-05**: IDS engine emits Qt signals for UI integration (`core/ids.py`)
-- [x] **IDS-06**: IP geolocation with SQLite caching (`core/geo.py`)
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| DET-001 | YAML-based rule engine with match conditions (ip, port, protocol, rate, payload pattern) | v1 | PROJECT.md |
+| DET-002 | Python escape hatch in rules for complex detection logic | v1 | PROJECT.md |
+| DET-003 | Rule hot-reload — new/modified rules active without restart | v1 | FEATURES |
+| DET-004 | Upgrade ML pipeline to PyOD with ECOD as default algorithm | v1 | STACK |
+| DET-005 | Batch ML scoring (10-100 flows per batch) to reduce per-flow overhead | v1 | PITFALLS P2 |
+| DET-006 | Automated ML model retraining on configurable schedule (default: 7 days) | v1 | PITFALLS ML1 |
+| DET-007 | Alert deduplication — suppress repeated identical alerts within configurable window | v1 | FEATURES |
+| DET-008 | Alert explainability — include triggering features and rule ID in every alert | v1 | FEATURES |
+| DET-009 | Signature-based detection module alongside behavioral ML | v1 | PROJECT.md |
+| DET-010 | Deep packet inspection via Scapy as optional plugin | v2 | PROJECT.md |
+| DET-011 | ML model A/B testing framework | v2 | PITFALLS ML1 |
+| DET-012 | Active learning — flag uncertain predictions for manual review | v2 | PITFALLS ML1 |
 
-### GUI
+## PLUGIN — Extension System
 
-- [x] **GUI-01**: Dark-theme PyQt5 application with tabbed interface
-- [x] **GUI-02**: Dashboard tab — live network connections and statistics
-- [x] **GUI-03**: Blocklist tab — view, add, unblock IPs; import/export
-- [x] **GUI-04**: Rules tab — view and manage firewall rules
-- [x] **GUI-05**: Alerts tab — alert history with geolocation, filter, block action
-- [x] **GUI-06**: Scheduler tab — time-based firewall rules (e.g., block port 22 at night)
-- [x] **GUI-07**: Settings tab — configure all parameters, saved to `config.yaml`
-- [ ] **GUI-08**: Threat map tab — Leaflet.js world map of blocked/flagged IPs (requires PyQtWebEngine)
-- [x] **GUI-09**: System tray icon with balloon notifications
-- [x] **GUI-10**: Splash screen on startup
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| PLG-001 | Define `AbstractDetector` ABC with `fit()` and `predict()` interface | v1 | ARCHITECTURE |
+| PLG-002 | Plugin discovery via `importlib.metadata.entry_points()` | v1 | ARCHITECTURE |
+| PLG-003 | Built-in plugins: IsolationForest, ECOD, YAMLRuleMatcher | v1 | STACK |
+| PLG-004 | Plugin resource limits (timeout, memory cap) for safety | v2 | PITFALLS S1 |
+| PLG-005 | Plugin marketplace/registry documentation | v2 | FEATURES |
 
-### Notifications
+## GUI — PySide6 Modern Interface
 
-- [x] **NOTF-01**: Desktop notifications via plyer
-- [x] **NOTF-02**: Email alerts via smtplib
-- [ ] **NOTF-03**: SMS alerts via Twilio (optional, fail-safe)
-- [x] **NOTF-04**: All notification methods are fail-safe (never crash the app)
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| GUI-001 | Migrate from PyQt5 to PySide6 (Qt6) | v1 | PROJECT.md, STACK |
+| GUI-002 | Real-time traffic visualization dashboard with charts | v1 | PROJECT.md |
+| GUI-003 | Rule editor with YAML syntax highlighting | v1 | DET-001 |
+| GUI-004 | Alert viewer with filtering, search, and export | v1 | Existing |
+| GUI-005 | Plugin manager UI (list, enable/disable installed plugins) | v2 | PLG-002 |
+| GUI-006 | Network flow visualization (topology/graph view) | v2 | PROJECT.md |
 
-### Scheduling
+## API — FastAPI Async REST
 
-- [x] **SCHED-01**: Time-based rule scheduler using `schedule` library
-- [x] **SCHED-02**: Scheduler runs in a background thread
-- [x] **SCHED-03**: Rules persist across restarts via SQLite
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| API-001 | Migrate from Flask to FastAPI with async endpoints | v1 | PROJECT.md, STACK |
+| API-002 | Auto-generated OpenAPI/Swagger documentation | v1 | STACK |
+| API-003 | WebSocket endpoint for real-time alert streaming | v1 | ARCHITECTURE |
+| API-004 | API key + optional JWT authentication | v1 | Existing + upgrade |
+| API-005 | Rate limiting and request validation (Pydantic models) | v1 | FEATURES |
 
-### API
+## CLI — Terminal Interface
 
-- [x] **API-01**: Optional Flask REST API (`api/server.py`)
-- [x] **API-02**: API runs as a background daemon thread when enabled
-- [x] **API-03**: Endpoints for remote monitoring and control
-- [x] **API-04**: API fails safely when Flask is not installed
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| CLI-001 | Typer-based CLI with auto-completion | v1 | STACK |
+| CLI-002 | Commands: status, block/unblock, alerts, rules, config | v1 | PROJECT.md |
+| CLI-003 | Rich terminal output (tables, colors, progress bars) | v1 | STACK |
+| CLI-004 | CLI connects to engine via same API as GUI | v1 | ARC-001 |
 
-### Export
+## PACKAGING — Build, Deploy, Test
 
-- [x] **EXP-01**: Export blocklist to CSV (`utils/exporter.py`)
-- [x] **EXP-02**: Export PDF reports via reportlab (optional, fail-safe)
+| ID | Requirement | Scope | Source |
+|----|-------------|-------|--------|
+| PKG-001 | pyproject.toml with proper metadata and optional dependency groups | v1 | STACK |
+| PKG-002 | Docker + Docker Compose for one-command deployment | v1 | PROJECT.md |
+| PKG-003 | GitHub Actions CI/CD (pytest, linting, type checking, builds) | v1 | PROJECT.md |
+| PKG-004 | Test coverage ≥80% (unit + integration) | v1 | PROJECT.md |
+| PKG-005 | GUI test suite (PySide6 QTest or pytest-qt) | v1 | CONCERNS.md |
+| PKG-006 | API integration tests | v1 | CONCERNS.md |
+| PKG-007 | Documentation site (MkDocs or Sphinx) | v1 | FEATURES |
+| PKG-008 | Contribution guide + security policy (SECURITY.md) | v1 | FEATURES |
+| PKG-009 | Platform installers (Windows MSI, Linux .deb/.rpm) | v2 | PROJECT.md |
+| PKG-010 | PyPI package publication | v2 | PROJECT.md |
 
-### Testing
+---
 
-- [x] **TEST-01**: pytest test suite with in-memory SQLite (never touches production DB)
-- [x] **TEST-02**: Tests for blocklist CRUD (`tests/test_blocklist.py`)
-- [x] **TEST-03**: Tests for firewall backend (`tests/test_firewall.py`)
-- [x] **TEST-04**: Tests for IDS engine (`tests/test_ids.py`)
-- [x] **TEST-05**: Tests for validators (`tests/test_validators.py`)
+## Traceability
 
-## v2 Requirements
+| Category | v1 Count | v2 Count | Total |
+|----------|----------|----------|-------|
+| FOUNDATION | 10 | 0 | 10 |
+| ARCHITECTURE | 7 | 1 | 8 |
+| DETECTION | 9 | 3 | 12 |
+| PLUGIN | 3 | 2 | 5 |
+| GUI | 4 | 2 | 6 |
+| API | 5 | 0 | 5 |
+| CLI | 4 | 0 | 4 |
+| PACKAGING | 8 | 2 | 10 |
+| **Total** | **50** | **10** | **60** |
 
-### Advanced Detection
+Every v1 requirement maps to exactly one roadmap phase. See ROADMAP.md.
 
-- **ADV-01**: Signature-based detection (known attack patterns)
-- **ADV-02**: Rate-limiting / connection throttling
-- **ADV-03**: Port scan detection
-
-### Reporting
-
-- **REP-01**: Scheduled PDF reports (daily/weekly summary)
-- **REP-02**: Email digest of blocked IPs
-
-### Packaging
-
-- **PKG-01**: Windows .exe installer via PyInstaller
-- **PKG-02**: Linux .deb / .rpm package
+---
+*Last updated: 2026-03-11*
 
 ## Out of Scope
 

@@ -16,7 +16,7 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     python_requires=">=3.10",
     install_requires=[
-        "PyQt5>=5.15",
+        "PySide6>=5.15",
         "psutil>=5.9",
         "requests>=2.28",
         "pyyaml>=6.0",

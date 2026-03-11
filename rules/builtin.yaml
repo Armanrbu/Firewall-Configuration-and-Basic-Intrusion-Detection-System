@@ -1,0 +1,115 @@
+# NetGuard IDS — Built-in Detection Rules
+# Format: YAML, one document per rule (separated by ---)
+# Rule schema:
+#   id:          Unique string identifier
+#   name:        Human-readable name
+#   description: What this rule detects
+#   severity:    critical | high | medium | low
+#   action:      block | alert | ignore
+#   conditions:  List of conditions (ALL must match unless operator: any)
+#     - field:     count | ports_hit | port | protocol | direction | ip
+#       op:        gt | lt | gte | lte | eq | neq | in | not_in | contains | matches
+#       value:     Comparison value
+#   operator:    all (default) | any — how conditions are combined
+#   python:      Optional Python expression evaluated in a restricted sandbox
+#                Available vars: count, ports_hit, port, protocol, direction, ip
+#   enabled:     true (default) | false
+
+---
+id: high-frequency-connections
+name: High Frequency Connections
+description: IP exceeds 20 connections in the monitoring window
+severity: high
+action: block
+conditions:
+  - field: count
+    op: gte
+    value: 20
+operator: all
+enabled: true
+
+---
+id: moderate-frequency
+name: Moderate Frequency Alert
+description: IP exceeds 10 connections — alert but don't auto-block
+severity: medium
+action: alert
+conditions:
+  - field: count
+    op: gte
+    value: 10
+  - field: count
+    op: lt
+    value: 20
+operator: all
+enabled: true
+
+---
+id: port-scan-wide
+name: Wide Port Scan
+description: IP hitting more than 10 distinct ports — likely scanning
+severity: high
+action: block
+conditions:
+  - field: ports_hit
+    op: gte
+    value: 10
+operator: all
+enabled: true
+
+---
+id: port-scan-narrow
+name: Narrow Port Scan Alert
+description: IP hitting 5-9 distinct ports — possible reconnaissance
+severity: medium
+action: alert
+conditions:
+  - field: ports_hit
+    op: gte
+    value: 5
+  - field: ports_hit
+    op: lt
+    value: 10
+operator: all
+enabled: true
+
+---
+id: ssh-brute-force
+name: SSH Brute Force
+description: Multiple connections to port 22 from same IP
+severity: critical
+action: block
+conditions:
+  - field: port
+    op: eq
+    value: 22
+  - field: count
+    op: gte
+    value: 5
+operator: all
+enabled: true
+
+---
+id: rdp-brute-force
+name: RDP Brute Force
+description: Multiple connections to port 3389 from same IP
+severity: critical
+action: block
+conditions:
+  - field: port
+    op: eq
+    value: 3389
+  - field: count
+    op: gte
+    value: 3
+operator: all
+enabled: true
+
+---
+id: high-entropy-ports
+name: High-Entropy Port Access
+description: Python rule — flags suspicious port diversity relative to count
+severity: high
+action: alert
+python: "ports_hit >= 8 and count >= 5 and (ports_hit / max(count, 1)) > 0.6"
+enabled: true

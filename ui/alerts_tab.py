@@ -10,8 +10,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QGroupBox,

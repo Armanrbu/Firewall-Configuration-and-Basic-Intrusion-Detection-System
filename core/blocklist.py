@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -21,22 +22,63 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 _DB_PATH = "firewall_ids.db"
-_con: sqlite3.Connection | None = None
+_local = threading.local()
+_connections_lock = threading.Lock()
+_all_connections: list[sqlite3.Connection] = []
+_generation = 0
 
 
-def get_db(path: str = _DB_PATH) -> sqlite3.Connection:
-    """Return (and lazily initialise) the shared SQLite connection."""
-    global _con
-    if _con is None:
-        _con = _init_db(path)
-    return _con
+def get_db(path: str | None = None) -> sqlite3.Connection:
+    """Return a per-thread SQLite connection (lazily initialised)."""
+    db_path = path or _DB_PATH
+    gen = getattr(_local, "generation", -1)
+    if gen != _generation:
+        _local.connection = None
+        _local.generation = _generation
+    con = getattr(_local, "connection", None)
+    if con is None:
+        con = _init_db(db_path)
+        _local.connection = con
+        _local.generation = _generation
+        with _connections_lock:
+            _all_connections.append(con)
+    return con
 
 
 def set_db_path(path: str) -> None:
     """Allow tests or the app to override the DB path before first use."""
-    global _con, _DB_PATH
+    global _DB_PATH
+    close_all_connections()
     _DB_PATH = path
-    _con = None  # force re-init
+
+
+def close_db() -> None:
+    """Close the current thread's database connection."""
+    con = getattr(_local, "connection", None)
+    if con is not None:
+        with _connections_lock:
+            try:
+                _all_connections.remove(con)
+            except ValueError:
+                pass
+        try:
+            con.close()
+        except Exception:
+            pass
+        _local.connection = None
+
+
+def close_all_connections() -> None:
+    """Close all tracked database connections (for shutdown)."""
+    global _generation
+    _generation += 1
+    with _connections_lock:
+        for con in _all_connections:
+            try:
+                con.close()
+            except Exception:
+                pass
+        _all_connections.clear()
 
 
 def _init_db(path: str) -> sqlite3.Connection:
@@ -44,6 +86,7 @@ def _init_db(path: str) -> sqlite3.Connection:
     con = sqlite3.connect(path, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA busy_timeout=5000")
     con.executescript("""
         CREATE TABLE IF NOT EXISTS blocked_ips (
             ip           TEXT PRIMARY KEY,
@@ -75,6 +118,11 @@ def _init_db(path: str) -> sqlite3.Connection:
         );
     """)
     con.commit()
+
+    # Run schema migrations
+    from core.db_migrations import run_migrations
+    run_migrations(con)
+
     logger.info("SQLite DB initialised at %s", path)
     return con
 
@@ -217,3 +265,58 @@ def get_stats_today() -> dict[str, int]:
         "SELECT COUNT(DISTINCT ip) FROM connection_log WHERE timestamp >= ?", (today_start,)
     ).fetchone()[0]
     return {"total": total, "blocked": blocked, "unique_ips": unique}
+
+
+# ---------------------------------------------------------------------------
+# Pruning / retention
+# ---------------------------------------------------------------------------
+
+def prune_connection_log(
+    max_age_days: int = 30,
+    max_rows: int = 100_000,
+) -> int:
+    """Delete connection log entries older than *max_age_days* or exceeding *max_rows*.
+
+    Returns the total number of rows deleted.
+    """
+    db = get_db()
+    deleted = 0
+
+    # Age-based pruning
+    cutoff = time.time() - (max_age_days * 86400)
+    cur = db.execute("DELETE FROM connection_log WHERE timestamp < ?", (cutoff,))
+    deleted += cur.rowcount
+    db.commit()
+
+    # Row-count pruning (keep the newest *max_rows*)
+    total = db.execute("SELECT COUNT(*) FROM connection_log").fetchone()[0]
+    if total > max_rows:
+        excess = total - max_rows
+        db.execute(
+            "DELETE FROM connection_log WHERE id IN "
+            "(SELECT id FROM connection_log ORDER BY timestamp ASC LIMIT ?)",
+            (excess,),
+        )
+        deleted += excess
+        db.commit()
+
+    if deleted:
+        logger.info("Pruned %d connection log entries.", deleted)
+    return deleted
+
+
+def prune_old_alerts(max_age_days: int = 90) -> int:
+    """Delete resolved alerts older than *max_age_days*.
+
+    Returns the number of rows deleted.
+    """
+    db = get_db()
+    cutoff = time.time() - (max_age_days * 86400)
+    cur = db.execute(
+        "DELETE FROM alerts WHERE resolved = 1 AND timestamp < ?", (cutoff,)
+    )
+    db.commit()
+    deleted = cur.rowcount
+    if deleted:
+        logger.info("Pruned %d old resolved alerts.", deleted)
+    return deleted

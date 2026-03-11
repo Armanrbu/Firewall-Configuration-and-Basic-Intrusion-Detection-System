@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import time
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QGroupBox,
@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PyQt5.QtCore import QTime
+from PySide6.QtCore import QTime
 
 from utils.logger import get_logger
 from utils.validators import is_valid_ip, is_valid_port

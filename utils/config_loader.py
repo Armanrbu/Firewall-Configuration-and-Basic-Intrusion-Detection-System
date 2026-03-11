@@ -64,6 +64,13 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "max_bytes": 10_485_760,
         "backup_count": 5,
     },
+    "database": {
+        "retention": {
+            "connection_log_days": 30,
+            "connection_log_max_rows": 100_000,
+            "alert_log_days": 90,
+        },
+    },
 }
 
 _config: dict[str, Any] = copy.deepcopy(_DEFAULT_CONFIG)

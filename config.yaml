@@ -22,14 +22,13 @@ notifications:
 email:
   smtp_host: "smtp.gmail.com"
   smtp_port: 465
-  username: ""
-  password: ""
+  # username/password now read from NETGUARD_SMTP_USER / NETGUARD_SMTP_PASSWORD env vars — see .env.example
   recipient: ""
 
 api:
   enabled: false
   port: 5000
-  api_key: "change-me-in-settings"
+  # api_key now read from NETGUARD_API_KEY env var — see .env.example
 
 anomaly:
   enabled: true
@@ -38,6 +37,25 @@ anomaly:
 
 logging:
   level: "INFO"
+  format: "human"  # "human" for text logs, "json" for structured JSON
   file: "netguard.log"
   max_bytes: 10485760
   backup_count: 5
+
+database:
+  retention:
+    connection_log_days: 30
+    connection_log_max_rows: 100000
+    alert_log_days: 90
+
+rules:
+  directory: "rules/"
+  hot_reload: true
+  hot_reload_interval_seconds: 30
+
+detection:
+  plugins_enabled: true
+  detectors:
+    - threshold
+    - rule_engine
+    - anomaly

@@ -1,6 +1,6 @@
 {
   "model_profile": "balanced",
-  "mode": "interactive",
+  "mode": "yolo",
   "granularity": "standard",
   "workflow": {
     "research": true,

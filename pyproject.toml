@@ -1,0 +1,175 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "netguard-ids"
+version = "2.0.0"
+description = "Advanced Firewall & Intrusion Detection System with ML anomaly detection"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Arman", email = "arman@example.com" }]
+requires-python = ">=3.10"
+keywords = ["firewall", "ids", "intrusion-detection", "security", "networking"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Networking :: Firewalls",
+    "Topic :: Security",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+]
+
+# Minimal runtime deps — engine runs headlessly with these
+dependencies = [
+    "psutil>=5.9",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "requests>=2.28",
+    "schedule>=1.2",
+    "scikit-learn>=1.3",
+    "joblib>=1.3",
+    "numpy>=1.24",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+# GUI frontend
+gui = [
+    "PySide6>=6.5.0",
+    "plyer>=2.1",
+    "matplotlib>=3.7",
+    "reportlab>=4.0",
+]
+
+# REST API + WebSocket streaming
+api = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+    "websockets>=11.0.0",
+]
+
+# Typer CLI (also needs rich, already in core deps)
+cli = [
+    "typer>=0.9.0",
+]
+
+# ML extras (PyOD preferred, sklearn fallback already in core deps)
+ml = [
+    "pyod>=1.1",
+]
+
+# Dev tools: testing, linting, type-checking, docs
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "pytest-mock>=3.12",
+    "httpx>=0.26",        # FastAPI TestClient async transport
+    "ruff>=0.3",
+    "mypy>=1.8",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.24",
+]
+
+# Install everything
+all = [
+    "netguard-ids[gui,api,cli,ml,dev]",
+]
+
+[project.scripts]
+netguard     = "main:main"
+netguard-cli = "cli.main:main"
+
+[project.urls]
+Homepage    = "https://github.com/Armanrbu/Firewall-Configuration-and-Basic-Intrusion-Detection-System"
+Issues      = "https://github.com/Armanrbu/Firewall-Configuration-and-Basic-Intrusion-Detection-System/issues"
+Changelog   = "https://github.com/Armanrbu/Firewall-Configuration-and-Basic-Intrusion-Detection-System/blob/main/CHANGELOG.md"
+
+[project.entry-points."netguard.detectors"]
+# Pluggable detector entry-points (populated by third-party packages)
+# threshold = "core.detector_abc:ThresholdDetector"
+
+# ---------------------------------------------------------------------------
+# setuptools package discovery
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+exclude = ["tests*", "*.tests", "docs*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml", "*.md"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths      = ["tests"]
+asyncio_mode   = "strict"
+addopts        = "-q --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source   = ["api", "cli", "core", "ui", "utils"]
+omit     = ["tests/*", "main.py", "setup.py", "*/__pycache__/*"]
+branch   = true
+
+[tool.coverage.report]
+show_missing       = true
+fail_under         = 65
+exclude_lines      = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.\\s*$",
+]
+
+# ---------------------------------------------------------------------------
+# ruff  (linter + formatter)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length    = 100
+target-version = "py310"
+extend-exclude = ["*.pyi", "build/", "dist/"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+    "C4",       # flake8-comprehensions
+    "SIM",      # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (ruff format handles it)
+    "B008",   # do not perform function calls in default arguments
+    "SIM105", # use contextlib.suppress
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "B018"]   # asserts and magic values fine in tests
+
+# ---------------------------------------------------------------------------
+# mypy  (type-checker)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version         = "3.10"
+strict                 = false    # gradually strict
+warn_return_any        = true
+warn_unused_ignores    = true
+ignore_missing_imports = true   # PySide6 stubs not always available
+exclude                = ["tests/", "setup.py"]

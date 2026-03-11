@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
@@ -26,7 +26,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 try:
-    from PyQt5.QtWebEngineWidgets import QWebEngineView
+    from PySide6.QtWebEngineWidgets import QWebEngineView
     HAS_WEBENGINE = True
 except ImportError:
     HAS_WEBENGINE = False

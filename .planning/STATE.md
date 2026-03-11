@@ -1,68 +1,111 @@
-# Project State
+# Project State — NetGuard IDS v2
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-03-11)
 
-**Core value:** Administrators can detect and block malicious network activity in real time from a single, self-contained desktop application — no cloud dependency, no complex setup.
-**Current focus:** Phase 7 — Testing & Polish
+**Core value:** One-click network security with ML-powered detection that anyone can install, configure via GUI, and extend via plugins — cross-platform, no Ph.D. required.
+**Version:** v2 (production-grade rewrite)
+**Current focus:** Phase 3 — Detection Engine COMPLETE
 
 ## Current Position
 
-Phase: 7 of 7 (Testing & Polish)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-03-11 — GSD initialised; phases 1–6 and test suite (07-01) confirmed complete
+Phase: 5 of 7 (Packaging & CI/CD)
+Plan: Completed 05-05 (Documentation)
+Status: Phase 5 COMPLETE ✅
+Last activity: pyproject.toml, Dockerfile, docker-compose, GitHub Actions CI, MkDocs site, SECURITY.md, CHANGELOG.md — 412 tests passing
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 80% (21/26 plans)
+
+## Architecture Summary
+
+**Current (v1, hardened):** Monolith — PyQt5 GUI + embedded IDS engine + Flask API, all in one process. Now with thread-safe DB, graceful shutdown, hardened subprocess calls, and structured logging.
+**Target (v2):** Microkernel — engine daemon ↔ PySide6 GUI / FastAPI API / Typer CLI as separate frontends
+
+## Key Stack Changes
+| Component | v1 | v2 |
+|-----------|----|----|
+| GUI | PyQt5 | PySide6 (Qt6) |
+| API | Flask | FastAPI (async) |
+| ML | Isolation Forest (sklearn) | PyOD (ECOD + ensemble) |
+| DB Access | Raw sqlite3 | SQLAlchemy ORM |
+| Messaging | Direct function calls | Redis Streams / multiprocessing.Queue |
+| CLI | None | Typer + Rich |
+| Packaging | setup.py + requirements.txt | pyproject.toml + Docker |
+| CI/CD | None | GitHub Actions |
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17 of 19
-- Average duration: N/A (pre-existing implementation)
-- Total execution time: N/A
+- Total plans: 26 across 7 phases
+- Completed: 21 (Phases 1–5)
+- v1 codebase: ~2500 lines, 20 modules (starting point)
+- Tests: 412 passing (66% coverage on Windows, ≥75% on Linux)
 
-**By Phase:**
+**Phase Plan Counts:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Foundation | 3/3 | - | - |
-| 2. Firewall Core | 3/3 | - | - |
-| 3. IDS Engine | 3/3 | - | - |
-| 4. GUI | 3/4 | - | - |
-| 5. Notifications & Scheduler | 2/2 | - | - |
-| 6. API & Exports | 2/2 | - | - |
-| 7. Testing & Polish | 1/2 | - | - |
-
-**Recent Trend:**
-- N/A — GSD just initialised for existing codebase
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 1. Security & Stability | 4/4 | ✅ Complete |
+| 2. Architecture | 4/4 | ✅ Complete |
+| 3. Detection Engine | 4/4 | ✅ Complete |
+| 4. New Frontends | 4/4 | ✅ Complete |
+| 5. Packaging & CI/CD | 5/5 | ✅ Complete |
+| 6. Advanced Features | 0/3 | Not started |
+| 7. Release Polish | 0/2 | Not started |
 
 ## Accumulated Context
 
-### Decisions
+### Key Decisions (v2)
+- Microkernel architecture: engine runs headless, frontends are optional consumers
+- PySide6 over PyQt5: LGPL license, Qt6, OSS-friendly
+- FastAPI over Flask: async, OpenAPI, Pydantic, modern standard
+- PyOD over raw sklearn: 45 algorithms, ECOD default, plugin-extensible
+- Redis for messaging: caching + streams + pub/sub in one service
+- SQLAlchemy for DB: backend-agnostic, supports SQLite → PostgreSQL migration
+- entry_points for plugins: standard Python packaging, pip-installable
+- YAML rules + Python escape hatch: simple for users, powerful for devs
+- Flow-based default + optional DPI plugin: lightweight by default
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+### Phase 1 Completions
+1. ✅ 01-01: Command injection eliminated — all subprocess calls use list-form args, IP validation enforced
+2. ✅ 01-02: Thread safety added — per-thread DB connections, graceful shutdown, error boundaries
+3. ✅ 01-03: Database migrations — versioned schema, auto-upgrade, configurable log pruning
+4. ✅ 01-04: JSON logging + .env credentials — no secrets in config.yaml, structured log output
 
-- [All phases]: SQLite used for all persistence (blocklist, alerts, geo cache, scheduler rules)
-- [Phase 3]: scikit-learn Isolation Forest is optional — falls back to threshold detection
-- [Phase 4]: PyQtWebEngine required for threat map tab — degrades to plain table if absent
-- [Phase 5]: All notification backends (plyer, smtplib, twilio) are fail-safe
+### Phase 2 Completions
+1. ✅ 02-01: Engine / GUI split — `NetGuardEngine` decoupled, headless mode
+2. ✅ 02-02: Firewall Backend Abstraction — Windows/Linux strategies + Facade
+3. ✅ 02-03: SQLAlchemy ORM + Repository Pattern
+4. ✅ 02-04: Event-Driven Messaging — In-process publish/subscribe EventBus
 
-### Pending Todos
+### Phase 3 Completions
+1. ✅ 03-01: AbstractDetector ABC + DetectorRegistry (entry_points plugins)
+2. ✅ 03-02: YAML Rule Engine (hot-reload, Python escape hatch)
+3. ✅ 03-03: ML Anomaly Detector (PyOD ECOD / IsolationForest, batch scoring, persistence)
+4. ✅ 03-04: AlertManager (deduplication, explainable features, severity ranking, correlation)
 
-- Complete threat_map_tab.py (GUI plan 04-04) — Leaflet.js world map, PyQtWebEngine
-- Add Twilio SMS support to notifier.py (NOTF-03)
-- Finalise packaging (setup.py) and README polish (plan 07-02)
+### Phase 4 Completions
+1. ✅ 04-01: FastAPI Server & IPC (async endpoints, Pydantic, OpenAPI docs, WebSockets)
+2. ✅ 04-02: PySide6 GUI Migration (all tabs ported, RuleEditorTab created)
+3. ✅ 04-03: Typer CLI (10 commands, Rich output, EventBus monitor, validate/reload rules)
+4. ✅ 04-04: Frontend Integration (AppRunner singleton, EventBusBridge Qt adapter, 18 integration tests)
 
-### Blockers/Concerns
+### Critical Risks
+1. ~~Command injection in firewall commands~~ — ✅ Fixed in Plan 01-01
+2. Model drift in ML detection — Phase 3 adds auto-retraining
+3. GIL limitations for packet capture — Phase 2 uses multiprocessing
+4. Cross-platform parity — CI tests both Windows + Linux
 
-- Threat map tab requires PyQtWebEngine which may not be available in all environments
-- Twilio is an optional/external service dependency — needs credential setup
+### Research Artifacts
+- `.planning/research/STACK.md` — technology versions and trade-offs
+- `.planning/research/FEATURES.md` — production IDS feature requirements
+- `.planning/research/ARCHITECTURE.md` — microkernel design patterns
+- `.planning/research/PITFALLS.md` — failure modes and mitigations
+- `.planning/research/SUMMARY.md` — consolidated findings
 
 ## Session Continuity
 
-Last session: 2026-03-11 09:24
-Stopped at: GSD workspace initialised — .planning/ directory created with config, PROJECT.md, REQUIREMENTS.md, ROADMAP.md, STATE.md, and phase directories
-Resume file: None
+Last session: 2026-03-11
+Stopped at: Phase 5 COMPLETE — all 5 plans done (412 tests passing)
+Resume with: Phase 6 — Advanced Features (plans 06-01 through 06-03)

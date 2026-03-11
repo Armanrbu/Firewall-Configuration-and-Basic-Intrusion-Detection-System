@@ -23,7 +23,9 @@ def _mock_run(returncode=0, stdout="OK", stderr=""):
 
 @pytest.fixture(autouse=True)
 def mock_subprocess():
-    """Patch subprocess.run for all tests in this module."""
+    """Patch subprocess.run globally and reset the backend singleton."""
+    import core.firewall as _fw
+    _fw.set_firewall_backend(None)   # reset so auto-detect runs fresh
     with patch("subprocess.run") as mock:
         mock.return_value = _mock_run()
         yield mock
@@ -101,14 +103,76 @@ class TestEnableDisableFirewall:
 
 
 class TestRunHelper:
+    """Tests for the _run helper inside the platform backend modules."""
+
     def test_run_timeout(self, mock_subprocess):
+        import platform
+        if platform.system() == "Windows":
+            from core.firewall_windows import _run
+        else:
+            from core.firewall_linux import _run
         mock_subprocess.side_effect = subprocess.TimeoutExpired(cmd="test", timeout=1)
-        rc, out, err = fw._run("some", "command")
+        rc, out, err = _run("some", "command")
         assert rc == 1
         assert "timed out" in err.lower()
 
     def test_run_not_found(self, mock_subprocess):
+        import platform
+        if platform.system() == "Windows":
+            from core.firewall_windows import _run
+        else:
+            from core.firewall_linux import _run
         mock_subprocess.side_effect = FileNotFoundError("not found")
-        rc, out, err = fw._run("no-such-command")
+        rc, out, err = _run("no-such-command")
         assert rc == 1
         assert "not found" in err.lower()
+
+
+class TestInjectionPrevention:
+    def test_block_ip_rejects_injection(self, mock_subprocess):
+        result = fw.block_ip("1.2.3.4; rm -rf /")
+        assert not result["success"]
+        assert "Invalid" in result["message"]
+        mock_subprocess.assert_not_called()
+
+    def test_block_ip_rejects_empty(self, mock_subprocess):
+        result = fw.block_ip("")
+        assert not result["success"]
+        mock_subprocess.assert_not_called()
+
+    def test_unblock_ip_rejects_injection(self, mock_subprocess):
+        result = fw.unblock_ip("1.2.3.4 && echo pwned")
+        assert not result["success"]
+        mock_subprocess.assert_not_called()
+
+    def test_block_port_rejects_invalid_port(self, mock_subprocess):
+        result = fw.block_port(99999)
+        assert not result["success"]
+        mock_subprocess.assert_not_called()
+
+    def test_block_port_rejects_invalid_protocol(self, mock_subprocess):
+        result = fw.block_port(80, "ICMP; rm -rf /")
+        assert not result["success"]
+        mock_subprocess.assert_not_called()
+
+    def test_unblock_port_rejects_invalid_port(self, mock_subprocess):
+        result = fw.unblock_port(0)
+        assert not result["success"]
+        mock_subprocess.assert_not_called()
+
+
+class TestIPv6Support:
+    def test_block_ipv6(self, mock_subprocess):
+        mock_subprocess.return_value = _mock_run(returncode=0)
+        result = fw.block_ip("2001:db8::1")
+        assert result["success"]
+
+    def test_unblock_ipv6(self, mock_subprocess):
+        mock_subprocess.return_value = _mock_run(returncode=0)
+        result = fw.unblock_ip("2001:db8::1")
+        assert result["success"]
+
+    def test_block_cidr(self, mock_subprocess):
+        mock_subprocess.return_value = _mock_run(returncode=0)
+        result = fw.block_ip("192.168.1.0/24")
+        assert result["success"]

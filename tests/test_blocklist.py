@@ -16,8 +16,7 @@ def reset_db(tmp_path):
     db_path = str(tmp_path / "test.db")
     bl.set_db_path(db_path)
     yield
-    # reset singleton
-    bl._con = None
+    bl.close_all_connections()
 
 
 class TestBlockedIps:
@@ -93,3 +92,40 @@ class TestConnectionLog:
         bl.log_connection("8.8.8.8", port=80)
         stats = bl.get_stats_today()
         assert stats["total"] >= 1
+
+
+class TestThreadSafety:
+    def test_concurrent_writes(self):
+        import threading
+        errors = []
+
+        def writer(n):
+            try:
+                for i in range(10):
+                    bl.add_block(f"10.{n}.0.{i}", reason="thread test")
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(n,)) for n in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0, f"Thread errors: {errors}"
+
+    def test_get_db_returns_different_connections_per_thread(self):
+        import threading
+        connections = {}
+
+        def get_conn(name):
+            connections[name] = id(bl.get_db())
+
+        t1 = threading.Thread(target=get_conn, args=("t1",))
+        t2 = threading.Thread(target=get_conn, args=("t2",))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        assert connections["t1"] != connections["t2"]

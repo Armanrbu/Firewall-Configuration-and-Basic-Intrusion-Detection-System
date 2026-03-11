@@ -6,9 +6,11 @@ import pytest
 from utils.validators import (
     is_valid_ip,
     is_valid_ipv4,
+    is_valid_ipv6,
     is_valid_cidr,
     is_valid_port,
     is_private_ip,
+    is_valid_ip_or_cidr,
     normalise_ip,
 )
 
@@ -89,3 +91,31 @@ class TestNormaliseIp:
 
     def test_invalid_passthrough(self):
         assert normalise_ip("invalid") == "invalid"
+
+
+class TestIsValidIpv6:
+    def test_valid_ipv6(self):
+        assert is_valid_ipv6("::1")
+        assert is_valid_ipv6("2001:db8::1")
+        assert is_valid_ipv6("fe80::1")
+
+    def test_ipv4_returns_false(self):
+        assert not is_valid_ipv6("192.168.1.1")
+
+    def test_garbage(self):
+        assert not is_valid_ipv6("not-an-ip")
+        assert not is_valid_ipv6("")
+
+
+class TestIsValidIpOrCidr:
+    def test_valid_ip(self):
+        assert is_valid_ip_or_cidr("192.168.1.1")
+        assert is_valid_ip_or_cidr("::1")
+
+    def test_valid_cidr(self):
+        assert is_valid_ip_or_cidr("192.168.0.0/24")
+        assert is_valid_ip_or_cidr("10.0.0.0/8")
+
+    def test_invalid(self):
+        assert not is_valid_ip_or_cidr("not-a-thing")
+        assert not is_valid_ip_or_cidr("")

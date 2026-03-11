@@ -19,7 +19,7 @@ except ImportError:
     HAS_PSUTIL = False
 
 try:
-    from PyQt5.QtCore import QObject, pyqtSignal
+    from PySide6.QtCore import QObject, Signal
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -184,12 +184,12 @@ if HAS_QT:
             log_line(str)          — raw log line from firewall log file
         """
 
-        new_connection = pyqtSignal(str)
-        ip_flagged = pyqtSignal(str, int)
-        ip_blocked = pyqtSignal(str)
-        anomaly_detected = pyqtSignal(str)
-        port_scan = pyqtSignal(str, object)
-        log_line = pyqtSignal(str)
+        new_connection = Signal(str)
+        ip_flagged = Signal(str, int)
+        ip_blocked = Signal(str)
+        anomaly_detected = Signal(str)
+        port_scan = Signal(str, object)
+        log_line = Signal(str)
 
         def __init__(
             self,
@@ -258,6 +258,10 @@ if HAS_QT:
                 t.join()
 
         def stop(self) -> None:
+            self._running = False
+
+        def request_stop(self) -> None:
+            """Signal the worker to stop gracefully."""
             self._running = False
 
         def _psutil_loop(self) -> None:

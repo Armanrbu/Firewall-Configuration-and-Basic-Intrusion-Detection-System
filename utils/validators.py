@@ -59,3 +59,16 @@ def normalise_ip(ip: str) -> str:
         return str(ipaddress.ip_address(ip))
     except ValueError:
         return ip
+
+
+def is_valid_ipv6(ip: str) -> bool:
+    """Return True if *ip* is a valid IPv6 address."""
+    try:
+        return isinstance(ipaddress.ip_address(ip), ipaddress.IPv6Address)
+    except ValueError:
+        return False
+
+
+def is_valid_ip_or_cidr(value: str) -> bool:
+    """Return True if *value* is a valid IP address or CIDR network."""
+    return is_valid_ip(value) or is_valid_cidr(value)

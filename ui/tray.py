@@ -4,9 +4,9 @@ System tray icon and balloon notifications.
 
 from __future__ import annotations
 
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QColor, QIcon, QPixmap
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QColor, QIcon, QPixmap
+from PySide6.QtWidgets import (
     QAction,
     QApplication,
     QMenu,
@@ -22,7 +22,7 @@ def _make_icon(color: str = "#7c3aed") -> QIcon:
     """Generate a simple coloured circle icon for the tray."""
     px = QPixmap(64, 64)
     px.fill(Qt.transparent)
-    from PyQt5.QtGui import QPainter, QBrush
+    from PySide6.QtGui import QPainter, QBrush
     painter = QPainter(px)
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setBrush(QBrush(QColor(color)))

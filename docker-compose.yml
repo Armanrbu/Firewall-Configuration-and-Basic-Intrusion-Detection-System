@@ -1,0 +1,69 @@
+# ============================================================
+#  NetGuard IDS — Docker Compose
+#  Services:
+#    netguard   engine + REST API (headless)
+#    redis      optional event streaming backend (future use)
+# ============================================================
+
+services:
+  # ---- Main engine + API ----
+  netguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: netguard-ids:latest
+    container_name: netguard
+    restart: unless-stopped
+
+    ports:
+      - "${NETGUARD_PORT:-5000}:5000"
+
+    environment:
+      NETGUARD_API_KEY: "${NETGUARD_API_KEY:-changeme-in-production}"
+      NETGUARD_ENV: "production"
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      # Persist SQLite database and logs outside the container
+      - netguard_data:/app/data
+      - netguard_logs:/app/logs
+      # Mount config so you can tweak it without rebuilding
+      - ./config.yaml:/app/config.yaml:ro
+      # Mount rules directory for live rule editing
+      - ./rules:/app/rules:ro
+
+    networks:
+      - netguard_net
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/status').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # Only request NET_ADMIN on Linux; omit on Docker Desktop / Windows
+    cap_add:
+      - NET_ADMIN
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---- Optional: expose a Typer CLI via docker exec ----
+  # Usage: docker compose exec netguard-cli python -m cli status
+  # (same container — no extra image needed)
+
+volumes:
+  netguard_data:
+    driver: local
+  netguard_logs:
+    driver: local
+
+networks:
+  netguard_net:
+    driver: bridge

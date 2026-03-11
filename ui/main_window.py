@@ -9,8 +9,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from PyQt5.QtCore import Qt, QThread, QTimer
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -37,10 +37,9 @@ class MainWindow(QMainWindow):
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__()
         self._config = config or {}
-        self._ids_thread: QThread | None = None
-        self._ids_worker = None
+        self._app_runner = None  # set by _start_engine_and_bridge
+        self._bridge = None      # EventBusBridge — Qt signals from EventBus
         self._tray = None
-        self._api_server = None
 
         self.setWindowTitle("🛡️ NetGuard IDS — Advanced Firewall & Intrusion Detection System")
         self.setMinimumSize(1100, 700)
@@ -48,8 +47,7 @@ class MainWindow(QMainWindow):
         self._apply_theme()
         self._setup_ui()
         self._setup_statusbar()
-        self._start_ids()
-        self._start_api_if_enabled()
+        self._start_engine_and_bridge()
         self._setup_tray()
 
         # Periodic status refresh
@@ -77,9 +75,11 @@ class MainWindow(QMainWindow):
         from ui.settings_tab import SettingsTab
         from ui.scheduler_tab import SchedulerTab
         from ui.threat_map_tab import ThreatMapTab
+        from ui.rule_editor_tab import RuleEditorTab
 
         self._dashboard = DashboardTab()
         self._rules = RulesTab()
+        self._rule_editor = RuleEditorTab()
         self._alerts = AlertsTab()
         self._blocklist = BlocklistTab()
         self._settings = SettingsTab()
@@ -88,7 +88,8 @@ class MainWindow(QMainWindow):
 
         tabs: list[tuple[str, QWidget]] = [
             ("📊 Dashboard", self._dashboard),
-            ("🔐 Rules", self._rules),
+            ("🔐 Block Rules", self._rules),
+            ("📝 YAML Rules", self._rule_editor),
             ("🚨 Alerts", self._alerts),
             ("🚫 Blocklist", self._blocklist),
             ("⏰ Scheduler", self._scheduler),
@@ -119,7 +120,7 @@ class MainWindow(QMainWindow):
         if not minimize:
             return
         try:
-            from PyQt5.QtWidgets import QSystemTrayIcon
+            from PySide6.QtWidgets import QSystemTrayIcon
             if not QSystemTrayIcon.isSystemTrayAvailable():
                 return
             from ui.tray import TrayIcon
@@ -129,60 +130,37 @@ class MainWindow(QMainWindow):
             logger.warning("Tray setup failed: %s", exc)
 
     # ------------------------------------------------------------------
-    # IDS
+    # Engine + Bridge
     # ------------------------------------------------------------------
 
-    def _start_ids(self) -> None:
-        ids_cfg = self._config.get("ids", {})
-        fw_cfg = self._config.get("firewall", {})
-
+    def _start_engine_and_bridge(self) -> None:
+        """Start AppRunner (engine + optional API) and wire EventBusBridge."""
         try:
-            from core.ids import IDSWorker
-            from core.whitelist import get_all
-            whitelist = set(get_all())
-            self._ids_worker = IDSWorker(
-                threshold=ids_cfg.get("alert_threshold", 10),
-                window_seconds=ids_cfg.get("time_window_seconds", 60),
-                port_scan_threshold=ids_cfg.get("port_scan_threshold", 5),
-                port_scan_window=ids_cfg.get("port_scan_window_seconds", 30),
-                auto_block=ids_cfg.get("auto_block", True),
-                whitelist=whitelist,
-                log_path=fw_cfg.get("log_path", ""),
-            )
-            self._ids_thread = QThread()
-            self._ids_worker.moveToThread(self._ids_thread)
-            self._ids_thread.started.connect(self._ids_worker.start)
+            from core.app_runner import AppRunner, set_runner
+            self._app_runner = AppRunner(config=self._config)
+            self._app_runner.start()
+            set_runner(self._app_runner)
 
-            # Connect signals
-            self._ids_worker.ip_flagged.connect(self._on_ip_flagged)
-            self._ids_worker.ip_blocked.connect(self._on_ip_blocked)
-            self._ids_worker.port_scan.connect(self._on_port_scan)
-            self._ids_worker.anomaly_detected.connect(self._on_anomaly)
+            # Bridge EventBus events → Qt signals (thread-safe)
+            from ui.event_bus_bridge import EventBusBridge
+            self._bridge = EventBusBridge(parent=self)
+            self._bridge.start(self._app_runner.get_bus())
 
-            self._ids_thread.start()
-            logger.info("IDS worker thread started.")
+            # Connect typed signals to existing handler slots
+            self._bridge.ip_flagged.connect(self._on_ip_flagged)
+            self._bridge.ip_blocked.connect(self._on_ip_blocked)
+            self._bridge.port_scan.connect(self._on_port_scan)
+            self._bridge.anomaly_detected.connect(self._on_anomaly)
+
+            # Update status bar label if API is up
+            api_cfg = self._config.get("api", {})
+            if api_cfg.get("enabled", False) and self._app_runner._api_server:
+                port = api_cfg.get("port", 5000)
+                self._sb_api.setText(f"🔌 API: Port {port}")
+
+            logger.info("AppRunner + EventBusBridge wired successfully.")
         except Exception as exc:
-            logger.error("Failed to start IDS: %s", exc)
-
-    # ------------------------------------------------------------------
-    # API
-    # ------------------------------------------------------------------
-
-    def _start_api_if_enabled(self) -> None:
-        api_cfg = self._config.get("api", {})
-        if not api_cfg.get("enabled", False):
-            return
-        try:
-            from api.server import APIServer
-            self._api_server = APIServer(
-                api_key=api_cfg.get("api_key", ""),
-                port=int(api_cfg.get("port", 5000)),
-            )
-            ok = self._api_server.start()
-            if ok:
-                self._sb_api.setText(f"🔌 API: Port {api_cfg.get('port', 5000)}")
-        except Exception as exc:
-            logger.warning("API server failed to start: %s", exc)
+            logger.error("Failed to start engine/bridge: %s", exc)
 
     # ------------------------------------------------------------------
     # IDS signal handlers
@@ -229,9 +207,9 @@ class MainWindow(QMainWindow):
         if self._tray:
             self._tray.show_alert_balloon("🔍 Port Scan", f"{ip} scanned {len(ports)} ports")
 
-    def _on_anomaly(self, ip: str) -> None:
+    def _on_anomaly(self, ip: str, score: float = 0.0) -> None:
         from core.blocklist import add_alert
-        add_alert(ip, "ML Anomaly", "Isolation Forest anomaly score exceeded threshold")
+        add_alert(ip, "ML Anomaly", f"Anomaly score: {score:.4f}")
         self._alerts.refresh()
         self._update_alert_count()
 
@@ -299,20 +277,23 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def _shutdown(self) -> None:
-        if self._ids_worker:
+        # Stop the EventBus bridge first
+        if self._bridge:
             try:
-                self._ids_worker.stop()
+                self._bridge.stop()
             except Exception:
                 pass
-        if self._ids_thread:
+
+        # Stop AppRunner (engine + API + scheduler)
+        if self._app_runner:
             try:
-                self._ids_thread.quit()
-                self._ids_thread.wait(2000)
+                self._app_runner.stop()
             except Exception:
                 pass
-        from core.scheduler import get_scheduler
+
+        from core.blocklist import close_all_connections
         try:
-            get_scheduler().stop()
+            close_all_connections()
         except Exception:
             pass
         logger.info("NetGuard IDS shut down cleanly.")

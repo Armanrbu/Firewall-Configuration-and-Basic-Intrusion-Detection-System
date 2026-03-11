@@ -71,7 +71,7 @@ class RuleScheduler:
 
     def __init__(self) -> None:
         self._thread: threading.Thread | None = None
-        self._running = False
+        self._stop_event = threading.Event()
         self._rules: list[ScheduledRule] = []
         self._load_from_db()
 
@@ -80,17 +80,19 @@ class RuleScheduler:
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        if self._running:
+        if self._thread is not None and self._thread.is_alive():
             return
-        self._running = True
+        self._stop_event.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True, name="Scheduler")
         self._thread.start()
         logger.info("Rule scheduler started.")
 
     def stop(self) -> None:
-        self._running = False
+        self._stop_event.set()
         if HAS_SCHEDULE:
             _schedule.clear()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
         logger.info("Rule scheduler stopped.")
 
     # ------------------------------------------------------------------
@@ -122,9 +124,9 @@ class RuleScheduler:
         for rule in self._rules:
             if rule.enabled:
                 self._register(rule)
-        while self._running:
+        while not self._stop_event.is_set():
             _schedule.run_pending()
-            time.sleep(30)
+            self._stop_event.wait(30)
 
     def _register(self, rule: ScheduledRule) -> None:
         if not HAS_SCHEDULE:

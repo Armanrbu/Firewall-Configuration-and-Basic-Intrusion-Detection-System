@@ -7,6 +7,7 @@ All methods are fail-safe — exceptions are logged but never propagated.
 
 from __future__ import annotations
 
+import os
 import smtplib
 import threading
 import time
@@ -53,8 +54,8 @@ class Notifier:
         email_cfg = cfg.get("email", {})
         self.smtp_host: str = email_cfg.get("smtp_host", "smtp.gmail.com")
         self.smtp_port: int = int(email_cfg.get("smtp_port", 465))
-        self.smtp_user: str = email_cfg.get("username", "")
-        self.smtp_pass: str = email_cfg.get("password", "")
+        self.smtp_user: str = os.environ.get("NETGUARD_SMTP_USER", "")
+        self.smtp_pass: str = os.environ.get("NETGUARD_SMTP_PASSWORD", "")
         self.smtp_to: str = email_cfg.get("recipient", "")
 
     # ------------------------------------------------------------------
@@ -156,15 +157,14 @@ class Notifier:
         if not HAS_TWILIO:
             return
         try:
-            import os
             client = TwilioClient(
-                os.environ.get("TWILIO_ACCOUNT_SID"),
-                os.environ.get("TWILIO_AUTH_TOKEN"),
+                os.environ.get("NETGUARD_TWILIO_SID"),
+                os.environ.get("NETGUARD_TWILIO_TOKEN"),
             )
             client.messages.create(
                 body=message[:160],
-                from_=os.environ.get("TWILIO_FROM_NUMBER", ""),
-                to=os.environ.get("TWILIO_TO_NUMBER", ""),
+                from_=os.environ.get("NETGUARD_TWILIO_FROM", ""),
+                to=os.environ.get("NETGUARD_TWILIO_TO", ""),
             )
             logger.info("SMS alert sent.")
         except Exception as exc:
