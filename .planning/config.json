@@ -1,0 +1,41 @@
+{
+  "mode": "interactive",
+  "granularity": "standard",
+  "model_profile": "balanced",
+  "models": {
+    "quality": {
+      "planning": "claude-opus-4-5",
+      "execution": "claude-opus-4-5",
+      "verification": "claude-sonnet-4-5"
+    },
+    "balanced": {
+      "planning": "claude-opus-4-5",
+      "execution": "claude-sonnet-4-5",
+      "verification": "claude-sonnet-4-5"
+    },
+    "budget": {
+      "planning": "claude-sonnet-4-5",
+      "execution": "claude-sonnet-4-5",
+      "verification": "claude-haiku-4-5"
+    }
+  },
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "auto_advance": false
+  },
+  "parallelization": {
+    "enabled": true
+  },
+  "planning": {
+    "commit_docs": true
+  },
+  "git": {
+    "branching_strategy": "phase",
+    "phase_branch_template": "gsd/phase-{phase}-{slug}",
+    "milestone_branch_template": "gsd/{milestone}-{slug}"
+  },
+  "milestone": "v1.0-netguard-ids",
+  "created_at": "2026-03-11T00:00:00Z"
+}
