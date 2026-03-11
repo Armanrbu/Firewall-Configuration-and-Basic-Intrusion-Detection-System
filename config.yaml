@@ -1,0 +1,43 @@
+app:
+  name: "NetGuard IDS"
+  theme: "dark"
+  minimize_to_tray: true
+
+ids:
+  alert_threshold: 10
+  time_window_seconds: 60
+  auto_block: true
+  port_scan_threshold: 5
+  port_scan_window_seconds: 30
+
+firewall:
+  log_path: "C:\\Temp\\pfirewall.log"
+  rules_prefix: "NetGuard_"
+
+notifications:
+  desktop: true
+  email: false
+  sms: false
+
+email:
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 465
+  username: ""
+  password: ""
+  recipient: ""
+
+api:
+  enabled: false
+  port: 5000
+  api_key: "change-me-in-settings"
+
+anomaly:
+  enabled: true
+  retrain_interval_minutes: 60
+  model_path: "anomaly_model.pkl"
+
+logging:
+  level: "INFO"
+  file: "netguard.log"
+  max_bytes: 10485760
+  backup_count: 5

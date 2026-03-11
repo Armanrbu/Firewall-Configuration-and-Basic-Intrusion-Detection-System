@@ -1,0 +1,32 @@
+# Runtime artifacts
+*.db
+*.log
+*.pkl
+whitelist.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Pytest cache
+.pytest_cache/
+.mypy_cache/
