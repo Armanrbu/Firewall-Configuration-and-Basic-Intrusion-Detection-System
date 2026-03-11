@@ -144,8 +144,8 @@ NetGuard IDS v2 transforms a working prototype (~2500 lines, 20 modules) into a 
 5. Security audit checklist completed (OWASP Top 10)
 
 **Plans:**
-- [ ] 07-01: Platform installers — Windows MSI, Linux .deb/.rpm
-- [ ] 07-02: PyPI publication + performance benchmarks + security audit
+- [x] 07-01: Platform installers — Windows MSI (.wxs + build_installer.ps1), Linux .deb (build_deb.sh) + .rpm (.spec)
+- [x] 07-02: PyPI release workflow + performance benchmark suite (7/7 pass) + OWASP security audit (56/58 controls)
 
 ---
 
@@ -159,9 +159,9 @@ NetGuard IDS v2 transforms a working prototype (~2500 lines, 20 modules) into a 
 | 4. New Frontends | 4/4 | ✅ Complete | API-001..005, GUI-001..004, CLI-001..004 |
 | 5. Packaging & CI/CD | 5/5 | ✅ Complete | PKG-001..008 |
 | 6. Advanced Features | 3/3 | ✅ Complete | DET-010..012, ARC-008, PLG-004..005, GUI-005..006 |
-| 7. Release Polish | 0/2 | Not started | PKG-009..010 |
+| 7. Release Polish | 2/2 | ✅ Complete | PKG-009..010 |
 
-**Total:** 24/26 plans complete | 7 phases | 60 requirements (50 v1, 10 v2)
+**Total:** 26/26 plans complete | 7 phases | 60 requirements (50 v1, 10 v2) | 🎉 PROJECT COMPLETE
 
 ---
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-12*

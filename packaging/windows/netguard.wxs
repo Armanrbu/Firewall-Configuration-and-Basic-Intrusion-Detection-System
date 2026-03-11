@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NetGuard IDS — Windows MSI Installer (WiX Toolset v3/v4)
+
+  Build with WiX v3:
+      candle.exe netguard.wxs -out netguard.wixobj
+      light.exe  netguard.wixobj -out NetGuard-IDS-2.0.0-win64.msi
+
+  Or via the build_installer.ps1 helper in this directory.
+
+  Prerequisites:
+    - WiX Toolset >= 3.11  (https://wixtoolset.org)
+    - Python 3.10+ in PATH  (or bundled via PyInstaller — see below)
+    - Visual C++ Redistributable (included as merge-module below)
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <!-- ------------------------------------------------------------------ -->
+  <!-- Product metadata                                                     -->
+  <!-- ------------------------------------------------------------------ -->
+  <Product
+    Id="*"
+    Name="NetGuard IDS"
+    Language="1033"
+    Version="2.0.0"
+    Manufacturer="Arman"
+    UpgradeCode="{B4F12A8C-3E1D-4A5B-9C6D-7E8F9A0B1C2D}">
+
+    <Package
+      InstallerVersion="500"
+      Compressed="yes"
+      InstallScope="perMachine"
+      Description="Advanced Firewall and Intrusion Detection System"
+      Comments="NetGuard IDS v2.0.0 — Security edition"
+      Manufacturer="Arman"
+      Keywords="firewall,ids,security,networking" />
+
+    <!-- Upgrade logic (replaces older versions) -->
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of NetGuard IDS is already installed."
+      AllowSameVersionUpgrades="no" />
+
+    <!-- Compressed cabinet file embedded in the MSI -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- UI sequence                                                        -->
+    <!-- ---------------------------------------------------------------- -->
+    <UIRef Id="WixUI_InstallDir" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+    <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
+    <WixVariable Id="WixUIBannerBmp"  Value="assets\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp"  Value="assets\dialog.bmp" />
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- Properties                                                         -->
+    <!-- ---------------------------------------------------------------- -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+    <Property Id="APPLICATIONFOLDER" Value="NetGuard IDS" />
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- Directory tree                                                     -->
+    <!-- ---------------------------------------------------------------- -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="NetGuard IDS">
+
+          <!-- Main application files installed from PyInstaller dist/ -->
+          <Directory Id="AppDir"    Name="app" />
+          <Directory Id="ConfigDir" Name="config" />
+          <Directory Id="RulesDir"  Name="rules" />
+          <Directory Id="LogsDir"   Name="logs" />
+          <Directory Id="DataDir"   Name="data" />
+
+        </Directory>
+      </Directory>
+
+      <!-- Start menu + Desktop shortcuts -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="NetGuard IDS" />
+      </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- Component group — application files                               -->
+    <!-- ---------------------------------------------------------------- -->
+    <ComponentGroup Id="ProductComponents" Directory="AppDir">
+
+      <!-- Main executable (built by PyInstaller) -->
+      <Component Id="MainExe" Guid="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}">
+        <File Id="NetGuardExe"
+              Source="dist\netguard\netguard.exe"
+              KeyPath="yes"
+              Checksum="yes" />
+      </Component>
+
+      <!-- CLI executable -->
+      <Component Id="CLIExe" Guid="{B2C3D4E5-F6A7-8901-BCDE-F12345678901}">
+        <File Id="NetGuardCLI"
+              Source="dist\netguard\netguard-cli.exe"
+              KeyPath="yes" />
+      </Component>
+
+      <!-- Default config (non-replacing) -->
+      <Component Id="DefaultConfig" Guid="{C3D4E5F6-A7B8-9012-CDEF-123456789012}">
+        <File Id="ConfigYaml"
+              Source="config.yaml"
+              KeyPath="yes"
+              NeverOverwrite="yes" />
+      </Component>
+
+      <!-- Built-in rules -->
+      <Component Id="BuiltinRules" Guid="{D4E5F6A7-B8C9-0123-DEF0-234567890123}">
+        <File Id="BuiltinRulesYaml"
+              Source="rules\builtin.yaml"
+              KeyPath="yes"
+              NeverOverwrite="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Shortcut components -->
+    <ComponentGroup Id="ShortcutComponents" Directory="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcut" Guid="{E5F6A7B8-C9D0-1234-EF01-345678901234}">
+        <Shortcut Id="StartMenuNetGuard"
+                  Name="NetGuard IDS"
+                  Description="Launch NetGuard IDS Firewall and Intrusion Detection System"
+                  Target="[AppDir]netguard.exe"
+                  WorkingDirectory="AppDir" />
+        <Shortcut Id="StartMenuUninstall"
+                  Name="Uninstall NetGuard IDS"
+                  Target="[SystemFolder]msiexec.exe"
+                  Arguments="/x [ProductCode]" />
+        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\NetGuard\IDS"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <Component Id="DesktopShortcut" Guid="{F6A7B8C9-D0E1-2345-F012-456789012345}">
+        <Shortcut Id="DesktopNetGuard"
+                  Directory="DesktopFolder"
+                  Name="NetGuard IDS"
+                  Description="NetGuard IDS"
+                  Target="[AppDir]netguard.exe"
+                  WorkingDirectory="AppDir" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\NetGuard\IDS"
+                       Name="desktop_shortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Windows Firewall exception — allow netguard to listen -->
+    <ComponentGroup Id="FirewallComponents" Directory="AppDir">
+      <Component Id="FirewallException" Guid="{A7B8C9D0-E1F2-3456-0123-567890123456}">
+        <fire:FirewallException
+          xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension"
+          Id="NetGuardFirewallException"
+          Name="NetGuard IDS"
+          Description="Allow NetGuard IDS engine to monitor network connections"
+          Program="[AppDir]netguard.exe"
+          Scope="localSubnet"
+          Protocol="tcp" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\NetGuard\IDS"
+                       Name="firewall_exception"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- Feature tree                                                       -->
+    <!-- ---------------------------------------------------------------- -->
+    <Feature Id="ProductFeature"
+             Title="NetGuard IDS"
+             Level="1"
+             Description="Core application — engine, GUI, and CLI"
+             Display="expand"
+             ConfigurableDirectory="INSTALLDIR">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="ShortcutComponents" />
+      <ComponentGroupRef Id="FirewallComponents" />
+    </Feature>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!-- Custom actions — Windows Defender exclusion                        -->
+    <!-- ---------------------------------------------------------------- -->
+    <CustomAction Id="AddDefenderExclusion"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore"
+                  ExeCommand='[SystemFolder]cmd.exe /C powershell -Command "Add-MpPreference -ExclusionPath &apos;[INSTALLDIR]&apos;"' />
+
+    <InstallExecuteSequence>
+      <Custom Action="AddDefenderExclusion" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+
+  </Product>
+</Wix>

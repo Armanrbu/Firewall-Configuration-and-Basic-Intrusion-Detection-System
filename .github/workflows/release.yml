@@ -1,0 +1,198 @@
+name: Release — Build & Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"        # e.g. v2.0.0
+      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+" # e.g. v2.1.0rc1
+
+permissions:
+  contents: write   # needed for GitHub Release creation
+  id-token: write   # needed for PyPI OIDC trusted publisher
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # 1. Validate the tag and run tests one final time
+  # ─────────────────────────────────────────────────────────────────────────
+  validate:
+    name: Final test gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install -e ".[dev,api,cli,ml]"
+
+      - name: Run full test suite
+        run: python -m pytest tests/ -q --override-ini="addopts=" --tb=short
+
+      - name: Security audit (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit --strict -r <(pip freeze)
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 2. Build sdist + wheel
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build distribution packages
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # full history for setuptools-scm (if used)
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build tools
+        run: pip install --upgrade build twine
+
+      - name: Build sdist and wheel
+        run: python -m build --sdist --wheel --outdir dist/
+
+      - name: Verify distributions
+        run: twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 3. Publish to PyPI (OIDC trusted-publisher)
+  # ─────────────────────────────────────────────────────────────────────────
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: pypi
+      url: https://pypi.org/p/netguard-ids
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: false
+          verbose: true
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 4. Create GitHub Release with changenotes
+  # ─────────────────────────────────────────────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish-pypi
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          python3 - << 'PY'
+          import re, os
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          txt = open("CHANGELOG.md").read()
+          # Find section matching this version
+          m = re.search(
+              r'## \[' + re.escape(tag) + r'\].*?\n(.*?)(?=\n## \[|\Z)',
+              txt, re.DOTALL
+          )
+          notes = m.group(1).strip() if m else "See CHANGELOG.md for details."
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"NOTES<<EOF\n{notes}\nEOF\n")
+          PY
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: NetGuard IDS ${{ github.ref_name }}
+          body: |
+            ## What's New in ${{ github.ref_name }}
+
+            ${{ steps.changelog.outputs.NOTES }}
+
+            ---
+            **Install:** `pip install netguard-ids==${{ steps.version.outputs.VERSION }}`
+
+            **Docker:** `docker pull ghcr.io/armanrbu/netguard-ids:${{ github.ref_name }}`
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'rc') }}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # 5. Publish Docker image to GHCR
+  # ─────────────────────────────────────────────────────────────────────────
+  docker-release:
+    name: Publish Docker image (GHCR)
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/netguard-ids
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, 'rc') }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64

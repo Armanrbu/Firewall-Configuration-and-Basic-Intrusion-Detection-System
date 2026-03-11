@@ -1,0 +1,47 @@
+version: 2
+updates:
+  # Python dependencies (pip)
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "ci(deps)"
+      include: scope
+    ignore:
+      # Only upgrade PySide6 manually (large binary, needs GUI testing)
+      - dependency-name: "PySide6"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci(deps)"

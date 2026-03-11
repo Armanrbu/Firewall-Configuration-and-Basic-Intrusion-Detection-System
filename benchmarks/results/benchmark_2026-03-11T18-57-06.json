@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-03-11T18:57:06.381984+00:00",
+  "python": "3.10.0 (tags/v3.10.0:b494f59, Oct  4 2021, 19:00:18) [MSC v.1929 64 bit (AMD64)]",
+  "platform": "Windows 10 AMD64",
+  "results": [
+    {
+      "name": "Threshold Detector",
+      "iterations": 10000,
+      "total_time_s": 0.18052649968740297,
+      "mean_latency_ms": 0.018052649968740297,
+      "p50_latency_ms": 0.01720000000204891,
+      "p95_latency_ms": 0.021100000594742596,
+      "p99_latency_ms": 0.03500000457279384,
+      "throughput_ops": 55393.52957773985,
+      "peak_memory_mb": 0.31827354431152344,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "Rule Engine",
+      "iterations": 5000,
+      "total_time_s": 0.008034099999349564,
+      "mean_latency_ms": 0.0016068199998699128,
+      "p50_latency_ms": 0.001500004145782441,
+      "p95_latency_ms": 0.0017999991541728377,
+      "p99_latency_ms": 0.0029000002541579306,
+      "throughput_ops": 622347.2449191319,
+      "peak_memory_mb": 0.1533203125,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "DPI Detector",
+      "iterations": 5000,
+      "total_time_s": 0.19411029984621564,
+      "mean_latency_ms": 0.03882205996924313,
+      "p50_latency_ms": 0.03829999332083389,
+      "p95_latency_ms": 0.04099999932805076,
+      "p99_latency_ms": 0.05539999983739108,
+      "throughput_ops": 25758.550700098152,
+      "peak_memory_mb": 0.16204833984375,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "Event Bus Publish",
+      "iterations": 20000,
+      "total_time_s": 0.04204049977124669,
+      "mean_latency_ms": 0.0021020249885623345,
+      "p50_latency_ms": 0.0020000006770715117,
+      "p95_latency_ms": 0.0021999949240125716,
+      "p99_latency_ms": 0.0032000025385059416,
+      "throughput_ops": 475731.73746328446,
+      "peak_memory_mb": 0.621058464050293,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "Config Loader",
+      "iterations": 2000,
+      "total_time_s": 2.3923112000411493,
+      "mean_latency_ms": 1.1961556000205746,
+      "p50_latency_ms": 1.1000999948009849,
+      "p95_latency_ms": 1.8092999962391332,
+      "p99_latency_ms": 2.687699998205062,
+      "throughput_ops": 836.0116359299737,
+      "peak_memory_mb": 0.12212753295898438,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "Whitelist Lookup",
+      "iterations": 10000,
+      "total_time_s": 27.17846439992718,
+      "mean_latency_ms": 2.717846439992718,
+      "p50_latency_ms": 2.497099994798191,
+      "p95_latency_ms": 4.332299999077804,
+      "p99_latency_ms": 5.114999999932479,
+      "throughput_ops": 367.9383740321544,
+      "peak_memory_mb": 0.3118095397949219,
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "name": "ML A/B Tester",
+      "iterations": 2000,
+      "total_time_s": 0.07632109995029168,
+      "mean_latency_ms": 0.03816054997514584,
+      "p50_latency_ms": 0.035700002626981586,
+      "p95_latency_ms": 0.05850000161444768,
+      "p99_latency_ms": 0.07069999992381781,
+      "throughput_ops": 26205.073057157326,
+      "peak_memory_mb": 0.4889669418334961,
+      "passed": true,
+      "notes": ""
+    }
+  ],
+  "summary": {
+    "total_benchmarks": 7,
+    "passed": 7,
+    "failed": 0,
+    "all_passed": true
+  }
+}

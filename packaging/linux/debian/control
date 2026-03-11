@@ -1,0 +1,23 @@
+Package: netguard-ids
+Version: 2.0.0
+Section: net
+Priority: optional
+Architecture: amd64
+Depends: python3 (>= 3.10), python3-pip, python3-venv, iptables (>= 1.8), libpcap0.8
+Recommends: python3-pyside6, npcap | libpcap-dev
+Suggests: scapy, wireshark
+Installed-Size: 12288
+Maintainer: Arman <arman@example.com>
+Homepage: https://github.com/Armanrbu/Firewall-Configuration-and-Basic-Intrusion-Detection-System
+Description: Advanced Firewall and Intrusion Detection System
+ NetGuard IDS is a production-ready network security tool that combines
+ a stateful firewall controller with an ML-powered intrusion detection
+ engine.
+ .
+ Features:
+  - Real-time connection monitoring via psutil / pcap
+  - Rule-based and ML anomaly detection (IsolationForest, ECOD)
+  - Deep Packet Inspection plugin with 7 signature categories
+  - Config hot-reload and ML A/B testing
+  - REST API (FastAPI), CLI (Typer), and PySide6 GUI frontends
+  - Docker and systemd deployment support
