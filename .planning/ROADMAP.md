@@ -126,9 +126,9 @@ NetGuard IDS v2 transforms a working prototype (~2500 lines, 20 modules) into a 
 5. Flow visualization renders network topology
 
 **Plans:**
-- [ ] 06-01: DPI plugin — Scapy packet inspection as installable plugin
-- [ ] 06-02: Config hot-reload + ML A/B testing + active learning
-- [ ] 06-03: Plugin manager UI + flow visualization
+- [x] 06-01: DPI plugin — Scapy packet inspection as installable plugin
+- [x] 06-02: Config hot-reload + ML A/B testing + active learning
+- [x] 06-03: Plugin manager UI + flow visualization
 
 ## Phase 7: Release Polish
 **Goal:** Platform installers, PyPI publication, performance tuning, security audit, final QA.
@@ -158,10 +158,10 @@ NetGuard IDS v2 transforms a working prototype (~2500 lines, 20 modules) into a 
 | 3. Detection Engine | 4/4 | ✅ Complete | DET-001..009, PLG-001..003 |
 | 4. New Frontends | 4/4 | ✅ Complete | API-001..005, GUI-001..004, CLI-001..004 |
 | 5. Packaging & CI/CD | 5/5 | ✅ Complete | PKG-001..008 |
-| 6. Advanced Features | 0/3 | Not started | DET-010..012, ARC-008, PLG-004..005, GUI-005..006 |
+| 6. Advanced Features | 3/3 | ✅ Complete | DET-010..012, ARC-008, PLG-004..005, GUI-005..006 |
 | 7. Release Polish | 0/2 | Not started | PKG-009..010 |
 
-**Total:** 21/26 plans complete | 7 phases | 60 requirements (50 v1, 10 v2)
+**Total:** 24/26 plans complete | 7 phases | 60 requirements (50 v1, 10 v2)
 
 ---
 *Last updated: 2026-03-11*
